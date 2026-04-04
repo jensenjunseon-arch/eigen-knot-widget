@@ -28,8 +28,23 @@ class Settings(BaseSettings):
     # CORS — open for now; lock down to specific Ghost domain in production
     CORS_ORIGINS: list[str] = ["*"]
 
+    # Admin Dashboard
+    ADMIN_PASSWORD: str = "eigenknot123"
+
     # Payment webhook secret (placeholder for PortOne/Toss)
     PAYMENT_WEBHOOK_SECRET: str = ""
+
+    from pydantic import model_validator
+    
+    @model_validator(mode='after')
+    def fix_postgres_url(self) -> 'Settings':
+        url = self.DATABASE_URL
+        if url and url.startswith("postgres"):
+            if "asyncpg" not in url:
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+                self.DATABASE_URL = url
+        return self
 
     class Config:
         env_file = str(BASE_DIR / ".env")

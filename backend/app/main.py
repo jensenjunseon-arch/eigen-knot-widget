@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine
 from app.models import Base
-from app.routers import assessments, payments
+from app.routers import assessments, payments, admin
 
 # ── Logging ──
 logging.basicConfig(
@@ -54,6 +54,7 @@ app.add_middleware(
 # ── Routers ──
 app.include_router(assessments.router)
 app.include_router(payments.router)
+app.include_router(admin.router)
 
 
 # ── Health Check ──

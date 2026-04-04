@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eigen knot - Admin Dashboard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", sans-serif;
+      background: #f5f5f7;
+      margin: 0;
+      padding: 40px 20px;
+      color: #1d1d1f;
+    }
+    .admin-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #333; }
+    .btn.outline {
+      background: transparent;
+      color: #1a1a1a;
+      border: 1px solid #e5e5ea;
+    }
+    .btn.outline:hover { background: #f5f5f7; }
+    
+    #auth-panel {
+      text-align: center;
+      padding: 60px 0;
+    }
+    #auth-panel input {
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 1px solid #d1d1d6;
+      border-radius: 6px;
+      width: 250px;
+      margin-right: 8px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    th {
+      font-weight: 600;
+      color: #86868b;
+      background: #fafafa;
+    }
+    tr:last-child td { border-bottom: none; }
+    .score-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+    
+    #dashboard-panel { display: none; }
+    .error-msg { color: #ff3b30; margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <!-- Auth Screen -->
+    <div id="auth-panel">
+      <h1>관리자 대시보드</h1>
+      <p style="color: #86868b; margin-bottom: 30px;">결과 데이터를 보려면 비밀번호를 입력하세요.</p>
+      <input type="password" id="admin-pw" placeholder="Admin Password" />
+      <button class="btn" onclick="login()">접속하기</button>
+      <div id="auth-error" class="error-msg"></div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-panel">
+      <div class="header-bar">
+        <h1>검사 결과 데이터 목록</h1>
+        <div>
+          <button class="btn outline" onclick="loadData()">새로고침</button>
+          <button class="btn" onclick="exportCSV()" style="margin-left: 8px;">엑셀(CSV) 다운로드</button>
+        </div>
+      </div>
+      
+      <table id="data-table">
+        <thead>
+          <tr>
+            <th>날짜</th>
+            <th>외향성</th>
+            <th>우호성</th>
+            <th>성실성</th>
+            <th>신경성</th>
+            <th>개방성</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <!-- Data goes here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // const API_BASE_URL = 'http://127.0.0.1:8000'; // For local testing
+    const API_BASE_URL = 'https://eigen-knot-widget.onrender.com';
+    let adminKey = '';
+
+    async function login() {
+      const pwInput = document.getElementById('admin-pw').value;
+      const errorDiv = document.getElementById('auth-error');
+      
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/admin/assessments?admin_key=${pwInput}`);
+        if (!res.ok) throw new Error('비밀번호가 틀렸습니다.');
+        
+        adminKey = pwInput;
+        document.getElementById('auth-panel').style.display = 'none';
+        document.getElementById('dashboard-panel').style.display = 'block';
+        
+        const json = await res.json();
+        renderTable(json.data);
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    }
+
+    async function loadData() {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assessments?admin_key=${adminKey}`);
+      if (res.ok) {
+        const json = await res.json();
+        renderTable(json.data);
+      }
+    }
+
+    function renderTable(dataItems) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+      
+      if (dataItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#86868b;">데이터가 없습니다.</td></tr>';
+        return;
+      }
+
+      dataItems.forEach(item => {
+        const dateObj = new Date(item.created_at);
+        const dateStr = dateObj.toLocaleDateString('ko-KR') + ' ' + dateObj.toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'});
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="color:#86868b;">${dateStr}</td>
+          <td><span class="score-badge">${item.extraversion.toFixed(0)}</span></td>
+          <td><span class="score-badge">${item.agreeableness.toFixed(0)}</span></td>
+          <td><span class="score-badge">${item.conscientiousness.toFixed(0)}</span></td>
+          <td><span class="score-badge">${item.neuroticism.toFixed(0)}</span></td>
+          <td><span class="score-badge">${item.openness.toFixed(0)}</span></td>
+          <td><span style="color: ${item.is_paid ? '#34c759' : '#ff9f0a'}; font-weight: 500;">${item.is_paid ? '결제완료' : '일반응답'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportCSV() {
+      window.location.href = `${API_BASE_URL}/api/v1/admin/assessments/csv?admin_key=${adminKey}`;
+    }
+  </script>
+</body>
+</html>
