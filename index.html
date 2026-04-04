@@ -825,6 +825,7 @@
 
     // ── State ──
     let currentIndex = 0;
+    let isTransitioning = false;
     const answers = {};
 
     // ── DOM Elements ──
@@ -872,7 +873,7 @@
         errorToast.style.display = 'block';
         setTimeout(() => { if(errorToast) errorToast.style.display = 'none'; }, 4000);
       } else {
-        alert(message); // Fallback if Ghost stripped the toast div
+        alert(message);
       }
     }
 
@@ -895,16 +896,18 @@
 
       if (animate) {
         const wrap = document.querySelector('.ek-question-wrap');
+        wrap.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
         wrap.style.opacity = '0';
-        wrap.style.transform = 'translateY(8px)';
+        wrap.style.transform = 'translateY(4px)';
         setTimeout(() => {
           setQuestionContent(q);
-          wrap.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
           wrap.style.opacity = '1';
           wrap.style.transform = 'translateY(0)';
-        }, 200);
+          isTransitioning = false;
+        }, 150);
       } else {
         setQuestionContent(q);
+        isTransitioning = false;
       }
     }
 
@@ -922,29 +925,37 @@
       });
     }
 
-    function selectOption(qId, value) {
-      answers[qId] = value;
-      const options = scaleContainer.querySelectorAll('.ek-scale-option');
-      options.forEach((el, i) => {
-        el.classList.toggle('selected', scaleOptions[i].value === value);
-      });
-      nextBtn.disabled = false;
-      submitBtn.disabled = false;
+    function selectOption(qId, val) {
+      if (isTransitioning) return;
+      answers[qId] = val;
+      renderQuestion(false);
 
-      if (currentIndex < questions.length - 1) {
-        setTimeout(() => goNext(), 350);
-      }
+      isTransitioning = true;
+      setTimeout(() => {
+        if (currentIndex < questions.length - 1) {
+          currentIndex++;
+          renderQuestion(true);
+        } else {
+          isTransitioning = false;
+          nextBtn.style.display = 'none';
+          submitBtn.style.display = '';
+        }
+      }, 150);
     }
 
     function goNext() {
+      if (isTransitioning) return;
       if (currentIndex < questions.length - 1) {
+        isTransitioning = true;
         currentIndex++;
         renderQuestion(true);
       }
     }
 
     function goPrev() {
+      if (isTransitioning) return;
       if (currentIndex > 0) {
+        isTransitioning = true;
         currentIndex--;
         renderQuestion(true);
       }
@@ -959,12 +970,10 @@
 
       const { factors, subfactors, comparisons } = scores;
 
-      // Merge all scores into a single lookup for easy access
       const allScores = {};
       Object.entries(factors).forEach(([k, v]) => { allScores[k] = v.score100; });
       Object.entries(subfactors).forEach(([k, v]) => { allScores[k] = v.score100; });
 
-      // Render each comparison pair as a bar chart group
       const compEntries = Object.values(comparisons);
 
       compEntries.forEach((comp, idx) => {
@@ -977,17 +986,14 @@
         const group = document.createElement('div');
         group.className = 'ek-comp-group';
 
-        // Title
         const title = document.createElement('div');
         title.className = 'ek-comp-title';
         title.textContent = leftLabel + '  vs  ' + rightLabel;
         group.appendChild(title);
 
-        // Chart area: left bar | VS | right bar
         const chart = document.createElement('div');
         chart.className = 'ek-comp-chart';
 
-        // Left bar
         const leftCol = document.createElement('div');
         leftCol.className = 'ek-comp-bar-col';
         leftCol.innerHTML =
@@ -998,13 +1004,11 @@
           '<span class="ek-comp-bar-name">' + leftLabel + '</span>';
         chart.appendChild(leftCol);
 
-        // VS divider
         const vs = document.createElement('div');
         vs.className = 'ek-comp-vs-divider';
         vs.textContent = 'VS';
         chart.appendChild(vs);
 
-        // Right bar
         const rightCol = document.createElement('div');
         rightCol.className = 'ek-comp-bar-col';
         rightCol.innerHTML =
@@ -1017,11 +1021,9 @@
 
         group.appendChild(chart);
 
-        // Insight text
         const insight = document.createElement('div');
         insight.className = 'ek-comp-insight';
         const diff = comp.diff;
-        const absDiff = (Math.abs(diff) / 4 * 100).toFixed(0); // Convert raw diff to score100 scale
         if (diff > 0) {
           insight.innerHTML = '<strong>' + leftLabel + '</strong>이(가) ' + Math.abs(leftScore - rightScore).toFixed(0) + '점 더 높습니다';
         } else if (diff < 0) {
@@ -1033,7 +1035,6 @@
 
         chartsEl.appendChild(group);
 
-        // Animate bars with staggered delay
         setTimeout(() => {
           [leftCol, rightCol].forEach((col, bIdx) => {
             setTimeout(() => {
