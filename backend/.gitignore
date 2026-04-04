@@ -1,0 +1,7 @@
+# eigen knot backend
+
+*.db
+*.pyc
+__pycache__/
+.venv/
+.env

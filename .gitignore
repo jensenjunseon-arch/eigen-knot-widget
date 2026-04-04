@@ -1,0 +1,23 @@
+# eigen knot — project root gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.db
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Node (http-server for local preview)
+node_modules/

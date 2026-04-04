@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="eigen knot 심리 검사 — 당신의 성격 구조를 다섯 가지 핵심 차원에서 탐색합니다.">
+  <title>eigen knot — 심리 검사</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: #fafafa;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 16px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Paste the widget below (simulates Ghost HTML card) -->
+<div style="width: 100%; max-width: 720px;">
+  <!-- #include index.html content inline for preview -->
+</div>
+
+<script>
+  // Load the widget
+  fetch('index.html')
+    .then(r => r.text())
+    .then(html => {
+      document.querySelector('div[style]').innerHTML = html;
+      // Re-execute scripts
+      const scripts = document.querySelector('div[style]').querySelectorAll('script');
+      scripts.forEach(s => {
+        const ns = document.createElement('script');
+        ns.textContent = s.textContent;
+        document.body.appendChild(ns);
+      });
+    });
+</script>
+
+</body>
+</html>
