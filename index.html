@@ -1,8 +1,24 @@
-<!--
-  eigen knot — 심리 검사 위젯
-  Embeddable in Ghost.org HTML card
-  Single-file HTML/CSS/JS — no external framework dependencies
--->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>eigen knot 심리 검사</title>
+  <style>
+    /* 전체 브라우저 화면의 배경을 은은한 회색으로 깔아서 위젯 종이가 가운데 뜨도록 설정 */
+    body, html {
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f7;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body>
+<!-- 독립된 전용 검사 위젯 -->
 <div id="eigen-knot-widget">
   <style>
     /* ── Ghost Global CSS Isolation ── */
@@ -1170,3 +1186,5 @@
   })();
   </script>
 </div>
+</body>
+</html>
