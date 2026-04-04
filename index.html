@@ -5,8 +5,17 @@
 -->
 <div id="eigen-knot-widget">
   <style>
+    /* ── Ghost Global CSS Isolation ── */
+    #eigen-knot-widget,
+    #eigen-knot-widget * {
+      box-sizing: border-box !important;
+      margin: 0;
+      padding: 0;
+      line-height: normal;
+    }
+
     #eigen-knot-widget {
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, Roboto, "Noto Sans KR", "Segoe UI", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, Roboto, "Noto Sans KR", "Segoe UI", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif !important;
       --ek-bg: #fafafa;
       --ek-surface: #ffffff;
       --ek-text: #1a1a1a;
@@ -216,12 +225,12 @@
     }
 
     .ek-scale-radio {
-      width: 18px;
-      height: 18px;
+      width: 18px !important;
+      height: 18px !important;
       border: 1.5px solid var(--ek-text-tertiary);
-      border-radius: 50%;
-      margin-right: 16px;
-      flex-shrink: 0;
+      border-radius: 50% !important;
+      margin-right: 16px !important;
+      flex-shrink: 0 !important;
       position: relative;
       transition: border-color 0.2s ease;
     }
