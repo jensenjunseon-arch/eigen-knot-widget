@@ -1051,16 +1051,17 @@
     // ═══════════════════════════════════════════════════
 
     async function handleSubmit() {
-      // VISUAL DEBUGGER - injected temporarily to find the Ghost error
-      const dbg = document.createElement("div");
-      dbg.style = "position:fixed;top:0;left:0;width:100%;background:rgba(0,0,0,0.85);color:#0f0;z-index:99999;padding:20px;font-family:monospace;font-size:14px;pointer-events:none;";
-      document.body.appendChild(dbg);
-      function log(m) { dbg.innerHTML += '<div>' + m + '</div>'; console.log(m); }
+      showScreen(loadingScreen);
+      progressWrap.style.display = 'none';
+
+      // 강제 인라인 디버거
+      const debugBox = document.createElement('div');
+      debugBox.style = "margin-top:20px; padding:15px; background:black; color:lime; font-family:monospace; font-size:12px; text-align:left;";
+      loadingScreen.appendChild(debugBox);
+      function log(m) { debugBox.innerHTML += '<div>' + m + '</div>'; }
 
       try {
-        log("1. handleSubmit 시작됨");
-        showScreen(loadingScreen);
-        progressWrap.style.display = 'none';
+        log("1. 제출 함수 진입 완료");
 
         const answerArray = [];
         const missing = [];
@@ -1072,18 +1073,17 @@
         }
 
         if (missing.length > 0) {
-          log("오류: 미응답 문항 발견 - " + missing.join(','));
+          log("에러: 미응답 문항 발견 - " + missing.join(','));
           showError('응답하지 않은 문항이 있습니다. (문항 ' + missing.join(', ') + ')');
           currentIndex = missing[0] - 1;
           showScreen(questionScreen);
           progressWrap.style.display = '';
           renderQuestion(false);
-          document.body.removeChild(dbg);
           return;
         }
 
-        log("2. 50개 응답 데이터 묶음 완료");
-        log("3. Render 서버로 데이터 전송 시도중... (fetch)");
+        log("2. 응답 배열 구성 완료 (50개)");
+        log("3. API 호출 시도: " + API_BASE_URL);
 
         // 1. Submit answers
         const submitRes = await fetch(API_BASE_URL + '/api/v1/assessments/submit', {
