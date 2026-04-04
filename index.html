@@ -867,9 +867,13 @@
 
     // ── Error Display ──
     function showError(message) {
-      errorToast.textContent = message;
-      errorToast.style.display = 'block';
-      setTimeout(() => { errorToast.style.display = 'none'; }, 4000);
+      if (errorToast) {
+        errorToast.textContent = message;
+        errorToast.style.display = 'block';
+        setTimeout(() => { if(errorToast) errorToast.style.display = 'none'; }, 4000);
+      } else {
+        alert(message); // Fallback if Ghost stripped the toast div
+      }
     }
 
     // ── Render Question ──
