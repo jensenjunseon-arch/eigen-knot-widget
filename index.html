@@ -1051,33 +1051,40 @@
     // ═══════════════════════════════════════════════════
 
     async function handleSubmit() {
-      showScreen(loadingScreen);
-      progressWrap.style.display = 'none';
-
-      // Build ordered answer array and validate all 50 are present
-      const answerArray = [];
-      const missing = [];
-      for (let i = 1; i <= 50; i++) {
-        if (answers[i] === undefined || answers[i] === null) {
-          missing.push(i);
-        }
-        answerArray.push(answers[i] || null);
-      }
-
-      if (missing.length > 0) {
-        console.warn('[eigen knot] Missing answers for questions:', missing);
-        showError('응답하지 않은 문항이 있습니다. (문항 ' + missing.join(', ') + ')');
-        // Navigate to first missing question
-        currentIndex = missing[0] - 1;
-        showScreen(questionScreen);
-        progressWrap.style.display = '';
-        renderQuestion(false);
-        return;
-      }
-
-      console.log('[eigen knot] Submitting', answerArray.length, 'answers');
+      // VISUAL DEBUGGER - injected temporarily to find the Ghost error
+      const dbg = document.createElement("div");
+      dbg.style = "position:fixed;top:0;left:0;width:100%;background:rgba(0,0,0,0.85);color:#0f0;z-index:99999;padding:20px;font-family:monospace;font-size:14px;pointer-events:none;";
+      document.body.appendChild(dbg);
+      function log(m) { dbg.innerHTML += '<div>' + m + '</div>'; console.log(m); }
 
       try {
+        log("1. handleSubmit 시작됨");
+        showScreen(loadingScreen);
+        progressWrap.style.display = 'none';
+
+        const answerArray = [];
+        const missing = [];
+        for (let i = 1; i <= 50; i++) {
+          if (answers[i] === undefined || answers[i] === null) {
+            missing.push(i);
+          }
+          answerArray.push(answers[i] || null);
+        }
+
+        if (missing.length > 0) {
+          log("오류: 미응답 문항 발견 - " + missing.join(','));
+          showError('응답하지 않은 문항이 있습니다. (문항 ' + missing.join(', ') + ')');
+          currentIndex = missing[0] - 1;
+          showScreen(questionScreen);
+          progressWrap.style.display = '';
+          renderQuestion(false);
+          document.body.removeChild(dbg);
+          return;
+        }
+
+        log("2. 50개 응답 데이터 묶음 완료");
+        log("3. Render 서버로 데이터 전송 시도중... (fetch)");
+
         // 1. Submit answers
         const submitRes = await fetch(API_BASE_URL + '/api/v1/assessments/submit', {
           method: 'POST',
@@ -1085,39 +1092,50 @@
           body: JSON.stringify({ answers: answerArray }),
         });
 
+        log("4. fetch 응답 수신 완료. Status: " + submitRes.status);
+
         if (!submitRes.ok) {
           const errBody = await submitRes.text();
-          console.error('[eigen knot] Submit error:', submitRes.status, errBody);
-          throw new Error('서버 오류 (' + submitRes.status + ')');
+          throw new Error('서버 오류 (' + submitRes.status + ') ' + errBody);
         }
 
         const submitData = await submitRes.json();
         const assessmentId = submitData.assessment_id;
-        console.log('[eigen knot] Assessment ID:', assessmentId);
+        log("5. Assessment ID 획득: " + assessmentId);
+        log("6. 결과 점수 조회 시도중...");
 
         // 2. Fetch full scores
         const scoresRes = await fetch(API_BASE_URL + '/api/v1/assessments/' + assessmentId);
 
+        log("7. 점수 데이터 수신 완료. Status: " + scoresRes.status);
+
         if (!scoresRes.ok) {
-          const errBody2 = await scoresRes.text();
-          console.error('[eigen knot] Scores fetch error:', scoresRes.status, errBody2);
           throw new Error('결과 조회 실패 (' + scoresRes.status + ')');
         }
 
         const scoresData = await scoresRes.json();
-        console.log('[eigen knot] Scores received:', Object.keys(scoresData.scores || {}));
+        log("8. 결과 화면 렌더링 호출");
 
         // 3. Render results
         renderResults(scoresData.scores);
 
         // 4. Show result screen
         setTimeout(() => {
+          log("9. 결과 화면 전환 타이머 동작");
           showScreen(resultScreen);
+          document.body.removeChild(dbg);
         }, 1200);
 
       } catch (error) {
-        console.error('[eigen knot] Submission failed:', error);
-        showError(error.message || '제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+        log("💥 크래시 발생: " + error.message);
+        log("에러 상세: " + error.stack);
+        
+        // 원시적인 에러 노출
+        const errDiv = document.createElement('div');
+        errDiv.style = "background:red;color:white;padding:10px;text-align:center;font-weight:bold;margin-bottom:20px;";
+        errDiv.textContent = '제출 에러: ' + error.message;
+        errorToast ? errorToast.appendChild(errDiv) : document.body.prepend(errDiv);
+
         showScreen(questionScreen);
         progressWrap.style.display = '';
         currentIndex = questions.length - 1;
