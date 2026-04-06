@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models import Assessment
+from app.models import Assessment, OVMDAssessment
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -139,5 +139,97 @@ async def export_assessments_csv(
     response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
     d_string = datetime.now().strftime("%Y%m%d_%H%M%S")
     response.headers["Content-Disposition"] = f"attachment; filename=eigenknot_results_{d_string}.csv"
+
+    return response
+
+
+# ── OVMD Admin Routes ──
+
+@router.get("/ovmd")
+async def list_ovmd_assessments(
+    _authorized: bool = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Return recent OVMD assessments as JSON."""
+    result = await db.execute(select(OVMDAssessment).order_by(OVMDAssessment.created_at.desc()).limit(100))
+    records = result.scalars().all()
+    
+    data = []
+    for r in records:
+        try:
+            scores = json.loads(r.type_scores) if r.type_scores else {}
+        except:
+            scores = {}
+        data.append({
+            "id": r.id,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "primary_type": r.primary_type,
+            "score_A": scores.get("A", 0),
+            "score_B": scores.get("B", 0),
+            "score_C": scores.get("C", 0),
+            "score_D": scores.get("D", 0),
+            "score_E": scores.get("E", 0),
+            "score_F": scores.get("F", 0),
+        })
+    return {"status": "success", "count": len(data), "data": data}
+
+
+@router.get("/ovmd/csv")
+async def export_ovmd_csv(
+    _authorized: bool = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Export all OVMD assessment results as a CSV file."""
+    result = await db.execute(select(OVMDAssessment).order_by(OVMDAssessment.created_at.desc()))
+    assessments = result.scalars().all()
+
+    stream = StringIO()
+    writer = csv.writer(stream)
+
+    headers = [
+        "Assessment ID", "Created At", "Primary Type",
+        "Score A (생계형 방관자)", "Score B (가치지향적 좌절가)", "Score C (정치적 기회주의자)",
+        "Score D (순수 헌신가)", "Score E (맹목적 추종자)", "Score F (도덕적 결벽주의자)",
+    ]
+    for i in range(1, 19):
+        headers.append(f"Q{i}")
+
+    writer.writerow(headers)
+
+    for item in assessments:
+        row = [
+            item.id,
+            item.created_at.isoformat() if item.created_at else "",
+            item.primary_type,
+        ]
+
+        # Parse scores
+        try:
+            scores = json.loads(item.type_scores) if item.type_scores else {}
+            row.extend([
+                scores.get("A", ""),
+                scores.get("B", ""),
+                scores.get("C", ""),
+                scores.get("D", ""),
+                scores.get("E", ""),
+                scores.get("F", ""),
+            ])
+        except Exception:
+            row.extend([""] * 6)
+
+        # Parse raw answers
+        try:
+            answers = json.loads(item.raw_answers) if item.raw_answers else []
+            while len(answers) < 18:
+                answers.append("")
+            row.extend(answers[:18])
+        except Exception:
+            row.extend([""] * 18)
+
+        writer.writerow(row)
+
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    d_string = datetime.now().strftime("%Y%m%d_%H%M%S")
+    response.headers["Content-Disposition"] = f"attachment; filename=ovmd_results_{d_string}.csv"
 
     return response

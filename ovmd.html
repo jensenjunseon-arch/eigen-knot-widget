@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>eigen knot - 조직 가치 불일치 관리 진단 (OVMD)</title>
+  <style>
+    /* ==========================================================================
+       Global Resets & Base Styles
+       ========================================================================== */
+    body, html {
+      margin: 0; padding: 0; background-color: #f5f5f7; display: flex; justify-content: center; min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #eigen-knot-widget {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", sans-serif !important;
+      --ek-bg: #fff;
+      --ek-text: #1d1d1f;
+      --ek-text-secondary: #86868b;
+      --ek-border: #e5e5ea;
+      --ek-accent: #004481; /* A corporate navy tone to differentiate from Big Five */
+      --ek-progress-bg: #f0f0f4;
+      --ek-scale-active: #004481;
+      --ek-scale-hover: #f5f5f7;
+      
+      background: var(--ek-bg);
+      color: var(--ek-text);
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
+      line-height: 1.6;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 40px rgba(0,0,0,0.03);
+    }
+    
+    #eigen-knot-widget *, #eigen-knot-widget *::before, #eigen-knot-widget *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+    }
+
+    /* Container */
+    .ek-container {
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ek-screen {
+      display: none;
+      padding: 40px;
+      flex: 1;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .ek-screen.active {
+      display: flex;
+      flex-direction: column;
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .ek-screen { padding: 30px 20px; display: block; flex: none; height: auto; min-height: 100vh; }
+      .ek-container { min-height: 100vh; }
+    }
+
+    /* Brand Header */
+    .ek-brand {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+      color: var(--ek-accent);
+      text-transform: uppercase;
+    }
+
+    /* Typography */
+    .ek-title {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+    .ek-desc {
+      font-size: 16px;
+      color: var(--ek-text-secondary);
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    /* Buttons */
+    .ek-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ek-accent);
+      color: #fff;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .ek-btn:active { transform: scale(0.98); }
+    .ek-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Progress */
+    .ek-progress-wrap {
+      padding: 24px 40px;
+      border-bottom: 1px solid var(--ek-border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .ek-progress-track {
+      flex: 1;
+      height: 6px;
+      background: var(--ek-progress-bg);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .ek-progress-fill {
+      height: 100%;
+      background: var(--ek-accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .ek-counter {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ek-text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Question UI */
+    .ek-question-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 20px 0;
+    }
+    .ek-question-text {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 40px;
+      text-align: center;
+      word-break: keep-all;
+    }
+
+    /* Likert Scale - Vertical stacking */
+    .ek-scale {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .ek-scale-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      border: 1px solid var(--ek-border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      background: var(--ek-bg);
+    }
+    @media (hover: hover) {
+      .ek-scale-option:hover { background: var(--ek-scale-hover); }
+    }
+    .ek-scale-option.selected {
+      border-color: var(--ek-scale-active);
+      background: rgba(0, 68, 129, 0.05); /* Slight navy tint */
+    }
+    .ek-scale-option.selected .ek-scale-radio {
+      border-color: var(--ek-scale-active);
+      background: var(--ek-scale-active);
+    }
+    .ek-scale-radio {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid #c7c7cc;
+      margin-right: 16px;
+      flex-shrink: 0;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .ek-scale-label {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ek-text);
+    }
+
+    /* Navigation */
+    .ek-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 20px;
+    }
+    .ek-nav-btn {
+      background: transparent;
+      color: var(--ek-text-secondary);
+      border: none;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 10px 0;
+    }
+    .ek-nav-btn.primary { color: var(--ek-accent); font-weight: 600; }
+    .ek-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Loading */
+    .ek-loading-content {
+      text-align: center; margin: auto;
+    }
+    .ek-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--ek-progress-bg);
+      border-top-color: var(--ek-accent);
+      border-radius: 50%;
+      animation: ekSpin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes ekSpin { to { transform: rotate(360deg); } }
+
+    /* Result Interpretation */
+    .ek-result-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 30px;
+      text-align: center;
+      border-bottom: 2px solid #1d1d1f;
+      padding-bottom: 15px;
+    }
+    
+    .ek-persona-box {
+      background: #fafafa;
+      border: 1px solid var(--ek-border);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 24px;
+    }
+    .ek-persona-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ek-accent);
+      margin-bottom: 8px;
+    }
+    .ek-persona-voice {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1d1d1f;
+      font-style: italic;
+      margin-bottom: 20px;
+    }
+    .ek-persona-section {
+      margin-bottom: 16px;
+    }
+    .ek-persona-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ek-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .ek-persona-text {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .ek-subtext {
+      text-align: center;
+      font-size: 13px;
+      color: var(--ek-text-secondary);
+      margin-top: 40px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div id="eigen-knot-widget">
+  <div class="ek-container" id="ek-container">
+
+    <!-- 1. Start Screen -->
+    <div class="ek-screen active" id="ek-start-screen">
+      <div style="margin: auto;">
+        <div class="ek-brand">EIGEN KNOT</div>
+        <h1 class="ek-title">직장인 유형 자가 진단</h1>
+        <p class="ek-desc">
+          이 검사는 여러분이 현재 조직에서 느끼는 가치관의 차이와 그에 대한 반응을 진단하기 위해 만들어졌습니다.<br><br>
+          약 3분 소요 · 총 18문항
+        </p>
+        <button class="ek-btn" id="ek-start-btn">진단 시작하기</button>
+      </div>
+    </div>
+
+    <!-- 2. Question Screen -->
+    <div class="ek-progress-wrap" id="ek-progress-wrap" style="display: none;">
+      <div class="ek-progress-track"><div class="ek-progress-fill" id="ek-progress-bar"></div></div>
+      <div class="ek-counter" id="ek-counter">1 / 18</div>
+    </div>
+
+    <div class="ek-screen" id="ek-question-screen">
+      <div class="ek-question-wrap">
+        <h2 class="ek-question-text" id="ek-question-text"></h2>
+        <div class="ek-scale" id="ek-scale"></div>
+      </div>
+      <div class="ek-nav">
+        <button class="ek-nav-btn" id="ek-prev-btn">← 이전</button>
+        <button class="ek-nav-btn primary" id="ek-next-btn" style="display: none;">다음 →</button>
+        <button class="ek-nav-btn primary" id="ek-submit-btn" style="display: none;">결과 확인</button>
+      </div>
+    </div>
+
+    <!-- 3. Loading Screen -->
+    <div class="ek-screen" id="ek-loading-screen">
+      <div class="ek-loading-content">
+        <div class="ek-spinner"></div>
+        <div class="ek-title" style="font-size: 20px;">진단 결과를 분석하고 있습니다</div>
+      </div>
+    </div>
+
+    <!-- 4. Result Screen -->
+    <div class="ek-screen" id="ek-result-screen">
+      <div class="ek-brand">EIGEN KNOT</div>
+      <div class="ek-result-title">나의 조직 적응 프로파일</div>
+      
+      <div id="ek-result-content"></div>
+      
+      <div class="ek-subtext">eigen knot OVMD © 2026</div>
+    </div>
+
+  </div>
+
+  <script>
+  (function() {
+    // const API_BASE_URL = 'http://127.0.0.1:8000';
+    const API_BASE_URL = 'https://eigen-knot-widget.onrender.com';
+
+    const questions = [
+      { id: 1, text: '나에게 회사는 자아실현의 장이 아니라, 그냥 돈 버는 수단(ATM)일 뿐이다.' },
+      { id: 2, text: '비효율적인 관행이나 불합리한 지시를 보면 화가 나서 참을 수가 없다.' },
+      { id: 3, text: '일을 잘하는 것보다 사내 정치나 줄 서기를 잘하는 것이 성공의 지름길이라고 생각한다.' },
+      { id: 4, text: '우리 회사의 비전과 목표는 훌륭하며, 회사의 성장이 곧 나의 성장이라고 믿는다.' },
+      { id: 5, text: '상사의 지시에는 토를 달지 않고 무조건 따르는 것이 조직 생활의 미덕이다.' },
+      { id: 6, text: '융통성을 발휘하기보다는 규정과 원칙을 문자 그대로 지키는 것이 가장 중요하다.' },
+      { id: 7, text: '회사에서는 최대한 튀지 않고 \'중간만 가는 것\'이 가장 현명한 처세술이다.' },
+      { id: 8, text: '회사를 더 좋게 바꾸고 싶은데, 내 의견이 묵살당할 때 큰 좌절감을 느낀다.' },
+      { id: 9, text: '성과를 내기 위해서라면 동료와의 경쟁에서 이기거나 조금 뻔뻔해질 필요가 있다.' },
+      { id: 10, text: '회사를 위해서라면 야근이나 주말 근무도 열정으로 감수할 수 있다.' },
+      { id: 11, text: '윗분이 시키는 일에는 다 깊은 뜻이 있을 것이라 믿고 묵묵히 수행한다.' },
+      { id: 12, text: '회사의 사소한 부조리나 비윤리적인 행위는 절대 용납해서는 안 된다.' },
+      { id: 13, text: '업무 시간에 열정을 쏟기보다는, 조용히 내 몫만 처리하고 칼퇴하는 것이 목표다.' },
+      { id: 14, text: '"원래 그래왔어"라는 말로 개선을 거부하는 꽉 막힌 조직 문화가 너무 답답하다.' },
+      { id: 15, text: '회사의 복잡한 의전이나 보고 절차도 업무의 일부이며, 이를 잘 이용하는 것이 능력이다.' },
+      { id: 16, text: '아직은 부족하지만, 선배들을 본받아 이 회사에 뼈를 묻을 각오로 일하고 있다.' },
+      { id: 17, text: '조직의 질서를 해치는 비판이나 반대 의견은 삼가는 것이 예의라고 생각한다.' },
+      { id: 18, text: '성과가 조금 떨어지더라도, 절차적 정당성이 훼손되어서는 안 된다고 생각한다.' }
+    ];
+
+    const PERSONA_DATA = {
+      "A": {
+        name: "생계형 방관자 (The Cynical Bystander)",
+        voice: "월급만큼만 일하자. 내 영혼은 집에 있다.",
+        state: "조직에 대한 기대가 사라졌습니다. 실망감이 누적되어 마음의 문을 닫은 상태입니다. 최소한의 업무만 하며 에너지를 아끼고 있습니다.",
+        prescription: "현재의 무기력함은 당신의 잘못이 아닙니다. 다만, 이 상태가 지속되면 커리어도 정체될 수 있습니다. 아주 작은 업무라도 스스로 완료하고 성취감을 느끼는 '작은 성공(Small Win)'을 만들어보세요."
+      },
+      "B": {
+        name: "가치지향적 좌절가 (The Frustrated Reformer)",
+        voice: "이건 비효율적이야. 고쳐야 하는데 안 돼!",
+        state: "일에 대한 열정과 기준이 높지만, 회사의 시스템이 따라주지 않아 화가 나 있습니다. 애사심이 있기에 비판도 하는 것입니다. 퇴사 위험이 가장 높습니다.",
+        prescription: "당신은 조직의 소중한 '개혁가'입니다. 혼자 싸우려 하지 말고, 당신의 뜻에 공감하는 동료나 멘토를 찾아 연대하세요. 에너지를 '분노'가 아닌 '구체적 대안 제시'에 쓰세요."
+      },
+      "C": {
+        name: "정치적 기회주의자 (The Political Pragmatist)",
+        voice: "줄을 잘 서야지. 경쟁은 당연한 거야.",
+        state: "조직의 불합리함을 비판하기보다, 그것을 이용해 생존하고 성장하는 방법을 택했습니다. 현실 감각이 뛰어나지만, 주변에서 '기회주의자'라는 평을 들을 수 있습니다.",
+        prescription: "단기적인 이익에는 밝지만, 장기적인 신뢰를 잃을 수 있습니다. 정치력도 실력이지만, 동료와의 협업과 공정한 성과에도 신경 써야 롱런할 수 있습니다."
+      },
+      "D": {
+        name: "순수 헌신가 (The Innocent Devotee)",
+        voice: "우리 회사는 위대해! 열심히 배우겠습니다!",
+        state: "회사의 비전을 믿고 열정적으로 일하는 상태입니다. 주로 신입사원이거나 새로운 프로젝트를 맡았을 때 나타납니다. 조직의 긍정적 에너지입니다.",
+        prescription: "그 열정은 소중하지만, 무조건적인 헌신은 '번아웃'으로 이어질 수 있습니다. '열정'과 '실력'을 구분하고, 나를 지키면서 일하는 법을 배우세요."
+      },
+      "E": {
+        name: "맹목적 추종자 (The Blind Follower)",
+        voice: "시키면 해야지. 토 달지 말자.",
+        state: "상명하복을 최고의 미덕으로 여기며, 비판적 사고 없이 지시를 수행합니다. 조직에 순응적이지만, 리더가 잘못된 판단을 할 때 브레이크를 걸지 못합니다.",
+        prescription: "\"Yes\"라고 말하기 전에 \"왜?\"라고 한 번만 더 생각해보세요. 건강한 의견 제시는 반항이 아니라 조직을 돕는 일입니다."
+      },
+      "F": {
+        name: "도덕적 결벽주의자 (The Moral Purist)",
+        voice: "규정 위반입니다. 원칙대로 합시다.",
+        state: "융통성보다는 원칙과 절차를 목숨처럼 여깁니다. 조직의 투명성을 지키는 파수꾼이지만, 때로는 '꽉 막힌 사람'으로 오해받아 고립될 수 있습니다.",
+        prescription: "원칙은 지키되, 동료를 설득하는 유연함이 필요합니다. \"안 됩니다\"라고 말할 때는 반드시 \"대신 이런 방법은 어떨까요?\"라는 대안을 함께 제시해보세요."
+      }
+    };
+
+    const scaleOptions = [
+      { value: 1, label: '전혀 그렇지 않다' },
+      { value: 2, label: '그렇지 않다' },
+      { value: 3, label: '보통이다' },
+      { value: 4, label: '그렇다' },
+      { value: 5, label: '매우 그렇다' }
+    ];
+
+    let currentIndex = 0;
+    let isTransitioning = false;
+    const answers = {};
+
+    const startScreen    = document.getElementById('ek-start-screen');
+    const questionScreen = document.getElementById('ek-question-screen');
+    const loadingScreen  = document.getElementById('ek-loading-screen');
+    const resultScreen   = document.getElementById('ek-result-screen');
+    const progressWrap   = document.getElementById('ek-progress-wrap');
+    const progressBar    = document.getElementById('ek-progress-bar');
+    const counter        = document.getElementById('ek-counter');
+    const questionText   = document.getElementById('ek-question-text');
+    const scaleContainer = document.getElementById('ek-scale');
+    const prevBtn        = document.getElementById('ek-prev-btn');
+    const nextBtn        = document.getElementById('ek-next-btn');
+    const submitBtn      = document.getElementById('ek-submit-btn');
+    const startBtn       = document.getElementById('ek-start-btn');
+    const resultContent  = document.getElementById('ek-result-content');
+
+    function showScreen(target) {
+      [startScreen, questionScreen, loadingScreen, resultScreen].forEach(s => s.classList.remove('active'));
+      setTimeout(() => target.classList.add('active'), 50);
+    }
+
+    function renderQuestion(animate) {
+      const q = questions[currentIndex];
+      const total = questions.length;
+
+      progressBar.style.width = ((currentIndex + 1) / total * 100) + '%';
+      counter.textContent = (currentIndex + 1) + ' / ' + total;
+      prevBtn.disabled = currentIndex === 0;
+
+      const isLast = currentIndex === total - 1;
+      nextBtn.style.display = isLast ? 'none' : '';
+      submitBtn.style.display = isLast ? '' : 'none';
+      nextBtn.disabled = !(q.id in answers);
+      submitBtn.disabled = !(q.id in answers);
+
+      if (animate) {
+        const wrap = document.querySelector('.ek-question-wrap');
+        wrap.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+        wrap.style.opacity = '0';
+        wrap.style.transform = 'translateY(4px)';
+        setTimeout(() => {
+          setQuestionContent(q);
+          wrap.style.opacity = '1';
+          wrap.style.transform = 'translateY(0)';
+          isTransitioning = false;
+        }, 150);
+      } else {
+        setQuestionContent(q);
+        isTransitioning = false;
+      }
+    }
+
+    function setQuestionContent(q) {
+      questionText.textContent = q.text;
+      scaleContainer.innerHTML = '';
+      scaleOptions.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'ek-scale-option' + (answers[q.id] === opt.value ? ' selected' : '');
+        div.innerHTML = `<div class="ek-scale-radio"></div><span class="ek-scale-label">${opt.label}</span>`;
+        div.addEventListener('click', () => selectOption(q.id, opt.value));
+        scaleContainer.appendChild(div);
+      });
+    }
+
+    function selectOption(qId, val) {
+      if (isTransitioning) return;
+      answers[qId] = val;
+      renderQuestion(false);
+
+      isTransitioning = true;
+      setTimeout(() => {
+        if (currentIndex < questions.length - 1) {
+          currentIndex++;
+          renderQuestion(true);
+        } else {
+          isTransitioning = false;
+          nextBtn.style.display = 'none';
+          submitBtn.style.display = '';
+        }
+      }, 150);
+    }
+
+    function goNext() {
+      if (isTransitioning) return;
+      if (currentIndex < questions.length - 1) {
+        isTransitioning = true;
+        currentIndex++;
+        renderQuestion(true);
+      }
+    }
+
+    function goPrev() {
+      if (isTransitioning) return;
+      if (currentIndex > 0) {
+        isTransitioning = true;
+        currentIndex--;
+        renderQuestion(true);
+      }
+    }
+
+    function renderResults(primaryType) {
+      const data = PERSONA_DATA[primaryType];
+      if (!data) return;
+
+      resultContent.innerHTML = `
+        <div class="ek-persona-box">
+          <div class="ek-persona-name">TYPE ${primaryType}. ${data.name.split(' (')[0]}</div>
+          <div class="ek-persona-voice">"${data.voice}"</div>
+          
+          <div class="ek-persona-section">
+            <div class="ek-persona-label">현재 상태</div>
+            <div class="ek-persona-text">${data.state}</div>
+          </div>
+          
+          <div class="ek-persona-section">
+            <div class="ek-persona-label">업무 처방</div>
+            <div class="ek-persona-text">${data.prescription}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleSubmit() {
+      showScreen(loadingScreen);
+      progressWrap.style.display = 'none';
+
+      try {
+        const answerArray = [];
+        const missing = [];
+        for (let i = 1; i <= 18; i++) {
+          if (answers[i] === undefined || answers[i] === null) {
+            missing.push(i);
+          }
+          answerArray.push(answers[i] || null);
+        }
+
+        if (missing.length > 0) {
+          alert('응답하지 않은 문항이 있습니다. (문항 ' + missing.join(', ') + ')');
+          currentIndex = missing[0] - 1;
+          showScreen(questionScreen);
+          progressWrap.style.display = '';
+          renderQuestion(false);
+          return;
+        }
+
+        const submitRes = await fetch(API_BASE_URL + '/api/v1/ovmd/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: answerArray }),
+        });
+
+        if (!submitRes.ok) throw new Error('서버 통신 오류');
+        
+        const data = await submitRes.json();
+        const pType = data.primary_type;
+
+        renderResults(pType);
+        
+        setTimeout(() => {
+          showScreen(resultScreen);
+        }, 1200);
+
+      } catch (error) {
+        alert('에러가 발생했습니다: ' + error.message);
+        showScreen(questionScreen);
+        progressWrap.style.display = '';
+        renderQuestion(false);
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      showScreen(questionScreen);
+      progressWrap.style.display = '';
+      renderQuestion(false);
+    });
+
+    nextBtn.addEventListener('click', goNext);
+    prevBtn.addEventListener('click', goPrev);
+    submitBtn.addEventListener('click', handleSubmit);
+
+  })();
+  </script>
+</body>
+</html>

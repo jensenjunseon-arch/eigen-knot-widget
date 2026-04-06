@@ -53,3 +53,34 @@ class Assessment(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class OVMDAssessment(Base):
+    """
+    Stores one completed Organizational Value Mismatch Dynamics (OVMD) session.
+    """
+
+    __tablename__ = "ovmd_assessments"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+
+    # Raw 1-5 scale responses (18 items)
+    raw_answers: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Scores for A through F types
+    # e.g. {"A": 10, "B": 15, "C": ...}
+    type_scores: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Best-matching type
+    primary_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

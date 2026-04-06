@@ -30,7 +30,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
     .btn {
       background: #1a1a1a;
@@ -62,6 +62,26 @@
       border-radius: 6px;
       width: 250px;
       margin-right: 8px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #e5e5ea;
+      padding-bottom: 10px;
+    }
+    .tab {
+      padding: 8px 16px;
+      font-size: 15px;
+      font-weight: 500;
+      color: #86868b;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .tab.active {
+      color: #1d1d1f;
+      background: #f5f5f7;
     }
     
     table {
@@ -115,8 +135,13 @@
         </div>
       </div>
       
+      <div class="tabs">
+        <div class="tab active" id="tab-bigfive" onclick="setTab('bigfive')">성격 구조 검사 (Big 5)</div>
+        <div class="tab" id="tab-ovmd" onclick="setTab('ovmd')">조직가치 불일치 진단 (OVMD)</div>
+      </div>
+      
       <table id="data-table">
-        <thead>
+        <thead id="table-head">
           <tr>
             <th>날짜</th>
             <th>외향성</th>
@@ -138,6 +163,7 @@
     // const API_BASE_URL = 'http://127.0.0.1:8000'; // For local testing
     const API_BASE_URL = 'https://eigen-knot-widget.onrender.com';
     let adminKey = '';
+    let currentTab = 'bigfive'; // 'bigfive' or 'ovmd'
 
     async function login() {
       const pwInput = document.getElementById('admin-pw').value;
@@ -152,21 +178,47 @@
         document.getElementById('dashboard-panel').style.display = 'block';
         
         const json = await res.json();
-        renderTable(json.data);
+        renderTableBigFive(json.data);
       } catch (err) {
         errorDiv.textContent = err.message;
       }
     }
 
+    function setTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-bigfive').classList.remove('active');
+      document.getElementById('tab-ovmd').classList.remove('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+      
+      loadData();
+    }
+
     async function loadData() {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assessments?admin_key=${adminKey}`);
+      const endpoint = currentTab === 'bigfive' ? '/api/v1/admin/assessments' : '/api/v1/admin/ovmd';
+      const res = await fetch(`${API_BASE_URL}${endpoint}?admin_key=${adminKey}`);
       if (res.ok) {
         const json = await res.json();
-        renderTable(json.data);
+        if (currentTab === 'bigfive') {
+          renderTableBigFive(json.data);
+        } else {
+          renderTableOVMD(json.data);
+        }
       }
     }
 
-    function renderTable(dataItems) {
+    function renderTableBigFive(dataItems) {
+      const thead = document.getElementById('table-head');
+      thead.innerHTML = `
+        <tr>
+          <th>날짜</th>
+          <th>외향성</th>
+          <th>우호성</th>
+          <th>성실성</th>
+          <th>신경성</th>
+          <th>개방성</th>
+          <th>상태</th>
+        </tr>
+      `;
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
       
@@ -193,8 +245,50 @@
       });
     }
 
+    function renderTableOVMD(dataItems) {
+      const thead = document.getElementById('table-head');
+      thead.innerHTML = `
+        <tr>
+          <th>날짜</th>
+          <th>최종 유형</th>
+          <th>Type A</th>
+          <th>Type B</th>
+          <th>Type C</th>
+          <th>Type D</th>
+          <th>Type E</th>
+          <th>Type F</th>
+        </tr>
+      `;
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+      
+      if (dataItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#86868b;">데이터가 없습니다.</td></tr>';
+        return;
+      }
+
+      dataItems.forEach(item => {
+        const dateObj = new Date(item.created_at);
+        const dateStr = dateObj.toLocaleDateString('ko-KR') + ' ' + dateObj.toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'});
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="color:#86868b;">${dateStr}</td>
+          <td><strong>${item.primary_type}</strong></td>
+          <td><span class="score-badge">${item.score_A}</span></td>
+          <td><span class="score-badge">${item.score_B}</span></td>
+          <td><span class="score-badge">${item.score_C}</span></td>
+          <td><span class="score-badge">${item.score_D}</span></td>
+          <td><span class="score-badge">${item.score_E}</span></td>
+          <td><span class="score-badge">${item.score_F}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     function exportCSV() {
-      window.location.href = `${API_BASE_URL}/api/v1/admin/assessments/csv?admin_key=${adminKey}`;
+      const endpoint = currentTab === 'bigfive' ? '/api/v1/admin/assessments/csv' : '/api/v1/admin/ovmd/csv';
+      window.location.href = `${API_BASE_URL}${endpoint}?admin_key=${adminKey}`;
     }
   </script>
 </body>
